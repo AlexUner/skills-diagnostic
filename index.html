@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f5f7fa">
-  <meta name="description" content="Короткая диагностика по Java, SQL и проектированию офлайн-приложения.">
+  <meta name="description" content="Диагностика по Java, SQL, курсовой и проектированию офлайн-приложения с сохранением прогресса.">
   <title>Диагностика навыков</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=2">
 </head>
 <body>
   <div class="shell">
@@ -18,7 +18,7 @@
     <div id="gate" class="gate" hidden>
       <div class="gate-panel">
         <h1>Входная диагностика</h1>
-        <p>Здесь можно пройти короткий тест по Java, SQL и проектированию офлайн-приложения. Открывайте персональную ссылку на телефоне или компьютере, чтобы продолжить ту же попытку.</p>
+        <p>Здесь можно пройти диагностику по Java, SQL, курсовой и офлайн-приложению. Открывайте персональную ссылку на телефоне или компьютере, чтобы продолжить ту же попытку.</p>
         <div class="gate-message" id="gate-message"></div>
       </div>
     </div>
@@ -27,34 +27,43 @@
       <section class="intro" aria-labelledby="page-title">
         <div>
           <h1 id="page-title">Входная диагностика</h1>
-          <p>Отвечайте в своем темпе. Можно остановиться и вернуться позже.</p>
+          <p>100 коротких заданий по разделам. Отвечайте в своем темпе и возвращайтесь позже.</p>
         </div>
-        <div class="intro-meta"><strong id="progress-count">0 из 12</strong><span>заданий завершено</span></div>
+        <div class="intro-meta"><strong id="progress-count">0 из 100</strong><span>заданий завершено</span></div>
       </section>
 
-      <div class="progress-track" role="progressbar" aria-label="Прогресс теста" aria-valuemin="0" aria-valuemax="12" aria-valuenow="0" id="progress"><div id="progress-fill"></div></div>
+      <div class="progress-track" role="progressbar" aria-label="Прогресс теста" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress"><div id="progress-fill"></div></div>
 
       <div class="layout">
         <aside class="sidebar" aria-label="Разделы и результаты">
           <div class="sidebar-head">
             <h2>Задания</h2>
-            <span id="remaining">12 осталось</span>
+            <span id="remaining">100 осталось</span>
           </div>
           <div class="score-panel">
             <h2>Промежуточный результат</h2>
             <p class="score-number"><span id="score-value">0</span><span class="score-denom"> / <span id="score-answered">0</span></span></p>
             <p class="score-caption">верных ответов среди проверенных автоматически</p>
             <p class="manual-note" id="manual-note">Практические ответы проверит наставник.</p>
+            <div id="score-breakdown" class="score-breakdown" aria-label="Результат по разделам"></div>
+            <button type="button" class="button button-secondary download-progress" id="download-progress-button">Скачать текущие ответы</button>
           </div>
-          <nav id="question-nav" aria-label="Переход между заданиями"></nav>
+          <nav id="section-nav" class="section-nav" aria-label="Разделы теста"></nav>
+          <p class="nav-caption">Вопросы текущего раздела</p>
+          <nav id="question-nav" class="question-nav" aria-label="Переход между заданиями"></nav>
         </aside>
 
         <section class="question-panel" id="question-panel" aria-labelledby="question-title">
-          <div class="question-topline"><span id="question-topic"></span><span id="question-position"></span></div>
+          <div class="question-topline"><span id="question-section"></span><span id="question-position"></span></div>
           <h2 id="question-title"></h2>
           <p class="question-description" id="question-description"></p>
           <pre id="question-code" class="code-block" hidden><code></code></pre>
           <div id="answer-area"></div>
+          <div class="comment-area">
+            <label for="comment-answer">Комментарий <span>(необязательно)</span></label>
+            <textarea id="comment-answer" maxlength="4000" rows="3" placeholder="Можно описать ход мысли, затруднение или оставить только комментарий вместо ответа."></textarea>
+            <p id="comment-hint">Черновик комментария сохраняется автоматически.</p>
+          </div>
           <p id="feedback" class="feedback" role="status" aria-live="polite" hidden></p>
           <div class="question-actions">
             <button type="button" class="button button-secondary" id="prev-button">Назад</button>
@@ -76,6 +85,7 @@
   </div>
   <script src="config.js"></script>
   <script src="questions.js"></script>
-  <script src="app.js"></script>
+  <script src="questions-extra.js?v=2"></script>
+  <script src="app.js?v=2"></script>
 </body>
 </html>

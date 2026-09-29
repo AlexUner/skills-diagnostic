@@ -10,6 +10,7 @@
           "$id": {
             ".validate": "newData.hasChildren(['value', 'submitted', 'updatedAt'])",
             "value": { ".validate": "newData.isString() && newData.val().length <= 4000" },
+            "comment": { ".validate": "newData.isString() && newData.val().length <= 4000" },
             "submitted": { ".validate": "newData.isBoolean()" },
             "updatedAt": { ".validate": "newData.isNumber()" },
             "$other": { ".validate": false }

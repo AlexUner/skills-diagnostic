@@ -7,9 +7,10 @@
   const preview = new URLSearchParams(location.search).has('preview');
   const storageKey = `skills-diagnostic:v1:${token || 'preview'}`;
   const pendingKey = `${storageKey}:pending`;
-  const positionKey = `${storageKey}:position`;
+  const positionKey = `${storageKey}:position:v2`;
   const $ = (id) => document.getElementById(id);
   const objective = questions.filter((question) => !question.kind);
+  const sections = [...new Set(questions.map((question) => question.section))];
   let state = { version: 1, answers: {} };
   let pending = new Set();
   let current = 0;
@@ -54,14 +55,14 @@
   }
 
   function mergeRemote(remote) {
-    const editing = document.activeElement?.id === 'text-answer';
-    const selection = editing ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
+    const editingId = ['text-answer', 'comment-answer'].includes(document.activeElement?.id) ? document.activeElement.id : null;
+    const selection = editingId ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
     const localPending = Object.fromEntries([...pending].filter((id) => state.answers[id]).map((id) => [id, state.answers[id]]));
     state = { version: 1, answers: { ...remote.answers, ...localPending } };
     saveLocal();
     render();
-    if (editing) {
-      const field = $('text-answer');
+    if (editingId) {
+      const field = $(editingId);
       field?.focus({ preventScroll: true });
       field?.setSelectionRange(...selection);
     }
@@ -124,7 +125,7 @@
   }
 
   function updateAnswer(id, answer, rerender = true) {
-    state.answers[id] = { ...answer, updatedAt: Date.now() };
+    state.answers[id] = { value: '', comment: '', submitted: false, ...state.answers[id], ...answer, updatedAt: Date.now() };
     pending.add(id);
     saveLocal();
     if (rerender) render();
@@ -137,34 +138,44 @@
 
   function getStats() {
     const done = questions.filter(completed).length;
-    const checked = objective.filter(completed);
+    const checked = objective.filter((question) => completed(question) && /^\d+$/.test(state.answers[question.id].value) && Number(state.answers[question.id].value) < question.choices.length);
     const correct = checked.filter((question) => Number(state.answers[question.id].value) === question.correct).length;
-    const manual = questions.filter((question) => question.kind && completed(question)).length;
-    return { done, checked: checked.length, correct, manual };
+    const manual = questions.filter((question) => completed(question) && (question.kind || !checked.includes(question))).length;
+    const bySection = sections.map((section) => {
+      const items = questions.filter((question) => question.section === section);
+      const checkedItems = checked.filter((question) => question.section === section);
+      return { section, done: items.filter(completed).length, total: items.length, correct: checkedItems.filter((question) => Number(state.answers[question.id].value) === question.correct).length, checked: checkedItems.length };
+    });
+    return { done, checked: checked.length, correct, manual, bySection };
   }
 
   function renderNav() {
+    const stats = getStats();
+    const sectionNav = $('section-nav');
+    sectionNav.replaceChildren();
+    sections.forEach((section) => {
+      const item = stats.bySection.find((entry) => entry.section === section);
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'section-item';
+      button.setAttribute('aria-current', questions[current].section === section ? 'true' : 'false');
+      button.innerHTML = `<span></span><strong></strong>`;
+      button.firstElementChild.textContent = section;
+      button.lastElementChild.textContent = `${item.done}/${item.total}`;
+      button.addEventListener('click', () => goTo(questions.findIndex((question) => question.section === section && !completed(question)) >= 0 ? questions.findIndex((question) => question.section === section && !completed(question)) : questions.findIndex((question) => question.section === section)));
+      sectionNav.append(button);
+    });
     const nav = $('question-nav');
     nav.replaceChildren();
-    let lastTopic = '';
     questions.forEach((question, index) => {
-      if (question.topic !== lastTopic) {
-        const label = document.createElement('div');
-        label.className = 'topic-label';
-        label.textContent = question.topic;
-        nav.append(label);
-        lastTopic = question.topic;
-      }
+      if (question.section !== questions[current].section) return;
       const button = document.createElement('button');
       button.type = 'button';
       button.className = `nav-item${completed(question) ? ' done' : ''}`;
       if (index === current) button.setAttribute('aria-current', 'step');
-      const number = document.createElement('span');
-      number.className = 'nav-index';
-      number.textContent = completed(question) ? '✓' : String(index + 1).padStart(2, '0');
-      const title = document.createElement('span');
-      title.textContent = question.title;
-      button.append(number, title);
+      button.textContent = completed(question) ? '✓' : String(index + 1).padStart(2, '0');
+      button.title = `${index + 1}. ${question.title}`;
+      button.setAttribute('aria-label', `${index + 1}. ${question.title}${completed(question) ? ', завершено' : ''}`);
       button.addEventListener('click', () => goTo(index));
       nav.append(button);
     });
@@ -184,8 +195,9 @@
       input.disabled = Boolean(answer?.submitted);
       input.addEventListener('change', () => {
         selectedChoice = index;
+        updateAnswer(question.id, { value: String(index), submitted: false }, false);
         document.querySelectorAll('.choice').forEach((item, itemIndex) => item.classList.toggle('selected', itemIndex === index));
-        $('submit-button').disabled = false;
+        updateSubmitButton();
       });
       const text = document.createElement('span');
       text.textContent = choice;
@@ -209,7 +221,7 @@
     textarea.disabled = Boolean(answer?.submitted);
     textarea.addEventListener('input', () => {
       updateAnswer(question.id, { value: textarea.value, submitted: false }, false);
-      $('submit-button').disabled = !textarea.value.trim();
+      updateSubmitButton();
     });
     const hint = document.createElement('p');
     hint.className = 'draft-hint';
@@ -220,22 +232,29 @@
   function renderQuestion() {
     const question = questions[current];
     const answer = state.answers[question.id];
-    $('question-topic').textContent = question.topic;
+    $('question-section').textContent = question.section;
     $('question-position').textContent = `${current + 1} / ${questions.length}`;
     $('question-title').textContent = question.title;
     $('question-description').textContent = question.description;
     $('question-code').hidden = !question.code;
     $('question-code').firstElementChild.textContent = question.code || '';
     $('answer-area').replaceChildren();
-    selectedChoice = answer?.submitted && !question.kind ? Number(answer.value) : null;
+    selectedChoice = !question.kind && /^\d+$/.test(answer?.value || '') && Number(answer.value) < question.choices.length ? Number(answer.value) : null;
     if (question.kind === 'text') renderText(question, answer);
     else renderChoices(question, answer);
+    const comment = $('comment-answer');
+    comment.value = answer?.comment || '';
+    comment.oninput = () => {
+      updateAnswer(question.id, { comment: comment.value }, false);
+      updateSubmitButton();
+    };
+    $('comment-hint').textContent = answer?.submitted ? 'Комментарий можно дополнить после отправки. Изменения сохраняются автоматически.' : 'Комментарий сохраняется автоматически. Можно отправить его вместо ответа.';
     const feedback = $('feedback');
     feedback.hidden = !answer?.submitted;
     feedback.className = 'feedback';
-    if (answer?.submitted && question.kind === 'text') {
+    if (answer?.submitted && (question.kind === 'text' || answer.value === '')) {
       feedback.classList.add('manual');
-      feedback.textContent = 'Ответ сохранен. Наставник проверит его отдельно.';
+      feedback.textContent = answer.value === '' ? 'Комментарий сохранен и передан на ручной разбор наставнику.' : 'Ответ сохранен. Наставник проверит его отдельно.';
     } else if (answer?.submitted) {
       const correct = Number(answer.value) === question.correct;
       feedback.classList.add(correct ? 'correct' : 'incorrect');
@@ -244,8 +263,15 @@
     $('prev-button').disabled = current === 0;
     $('next-button').textContent = current === questions.length - 1 ? 'К началу' : (answer?.submitted ? 'Следующее' : 'Пропустить');
     $('submit-button').hidden = Boolean(answer?.submitted);
-    $('submit-button').textContent = question.kind === 'text' ? 'Отправить ответ' : 'Ответить';
-    $('submit-button').disabled = question.kind === 'text' ? !answer?.value?.trim() : selectedChoice === null;
+    $('submit-button').textContent = 'Отправить';
+    updateSubmitButton();
+  }
+
+  function updateSubmitButton() {
+    const question = questions[current];
+    if (completed(question)) return;
+    const value = question.kind === 'text' ? $('text-answer')?.value.trim() : selectedChoice;
+    $('submit-button').disabled = (value === '' || value === null) && !$('comment-answer').value.trim();
   }
 
   function render() {
@@ -257,16 +283,29 @@
     $('progress-fill').style.width = `${stats.done / questions.length * 100}%`;
     $('score-value').textContent = String(stats.correct);
     $('score-answered').textContent = String(stats.checked);
-    $('manual-note').textContent = stats.manual ? `${stats.manual} практических ответа ждут проверки наставника.` : 'Практические ответы проверит наставник.';
+    $('manual-note').textContent = stats.manual ? `На ручном разборе: ${stats.manual}.` : 'Открытые ответы и комментарии без выбранного варианта проверит наставник.';
+    const breakdown = $('score-breakdown');
+    breakdown.replaceChildren();
+    stats.bySection.forEach((item) => {
+      const row = document.createElement('div');
+      row.className = 'breakdown-row';
+      const name = document.createElement('span');
+      name.textContent = item.section;
+      const score = document.createElement('strong');
+      score.textContent = `${item.correct}/${item.checked}`;
+      score.title = `${item.correct} верно из ${item.checked} автоматически проверенных`;
+      row.append(name, score);
+      breakdown.append(row);
+    });
     $('finish').hidden = stats.done !== questions.length;
-    if (stats.done === questions.length) $('finish-summary').textContent = `Автоматическая часть: ${stats.correct} из ${objective.length}. Практические ответы (${stats.manual}) проверит наставник.`;
+    if (stats.done === questions.length) $('finish-summary').textContent = `Автоматически проверено: ${stats.correct} верно из ${stats.checked}. На ручном разборе: ${stats.manual}.`;
     renderNav();
     renderQuestion();
   }
 
   function goTo(index) {
     current = index;
-    localStorage.setItem(positionKey, String(current));
+    localStorage.setItem(positionKey, questions[current].id);
     render();
     if (window.innerWidth < 761) $('question-panel').scrollIntoView({ block: 'start', behavior: 'smooth' });
   }
@@ -275,8 +314,9 @@
     const question = questions[current];
     if (completed(question)) return;
     const value = question.kind === 'text' ? $('text-answer').value.trim() : selectedChoice;
-    if (value === '' || value === null) return;
-    updateAnswer(question.id, { value: String(value), submitted: true });
+    const comment = $('comment-answer').value.trim();
+    if ((value === '' || value === null) && !comment) return;
+    updateAnswer(question.id, { value: value === null ? '' : String(value), comment, submitted: true });
   }
 
   function downloadAnswers() {
@@ -284,10 +324,12 @@
       title: 'Входная диагностика', exportedAt: new Date().toISOString(),
       summary: getStats(),
       answers: questions.map((question) => ({
-        topic: question.topic, question: question.title,
-        answer: question.kind === 'text' ? state.answers[question.id]?.value : question.choices[Number(state.answers[question.id]?.value)],
-        correct: question.kind === 'text' ? null : Number(state.answers[question.id]?.value) === question.correct,
-        review: question.kind === 'text' ? 'Проверяется наставником' : 'Проверено автоматически'
+        id: question.id, section: question.section, level: question.level, question: question.title,
+        submitted: Boolean(state.answers[question.id]?.submitted),
+        answer: question.kind === 'text' ? state.answers[question.id]?.value || '' : /^\d+$/.test(state.answers[question.id]?.value || '') ? question.choices[Number(state.answers[question.id].value)] : '',
+        comment: state.answers[question.id]?.comment || '',
+        correct: !completed(question) || question.kind || !/^\d+$/.test(state.answers[question.id]?.value || '') ? null : Number(state.answers[question.id].value) === question.correct,
+        review: !completed(question) ? 'Не отправлен' : question.kind || !/^\d+$/.test(state.answers[question.id]?.value || '') ? 'На ручном разборе' : 'Проверено автоматически'
       }))
     };
     const url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }));
@@ -306,13 +348,15 @@
       return;
     }
     restoreLocal();
-    const savedPosition = Number(localStorage.getItem(positionKey));
-    if (Number.isInteger(savedPosition) && savedPosition >= 0 && savedPosition < questions.length) current = savedPosition;
+    const positionValue = localStorage.getItem(positionKey);
+    const savedPosition = questions.findIndex((question) => question.id === positionValue);
+    if (savedPosition >= 0) current = savedPosition;
     else current = Math.max(0, questions.findIndex((question) => !completed(question)));
     if (token && databaseURL) {
       try {
         const { data } = await fetchRemote();
         mergeRemote(data);
+        if (positionValue === null) current = Math.max(0, questions.findIndex((question) => !completed(question)));
         status(pending.size ? 'Синхронизация' : 'Сохранено в облаке', pending.size ? 'syncing' : 'saved');
         if (pending.size) scheduleSync(0);
       } catch (error) {
@@ -333,6 +377,7 @@
   $('next-button').addEventListener('click', () => goTo(current === questions.length - 1 ? 0 : current + 1));
   $('submit-button').addEventListener('click', submit);
   $('download-button').addEventListener('click', downloadAnswers);
+  $('download-progress-button').addEventListener('click', downloadAnswers);
   window.addEventListener('online', () => pending.size ? scheduleSync(0) : refreshRemote());
   window.addEventListener('focus', refreshRemote);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshRemote(); });
