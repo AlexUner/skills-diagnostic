@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f7fa">
+  <meta name="description" content="Короткая диагностика по Java, SQL и проектированию офлайн-приложения.">
+  <title>Диагностика навыков</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Диагностика навыков, начало">Практика<span class="brand-mark">/</span>старт</a>
+      <div class="save-status" id="save-status" role="status" aria-live="polite"><span class="status-dot"></span><span>Загрузка попытки</span></div>
+    </header>
+
+    <div id="gate" class="gate" hidden>
+      <div class="gate-panel">
+        <h1>Входная диагностика</h1>
+        <p>Здесь можно пройти короткий тест по Java, SQL и проектированию офлайн-приложения. Открывайте персональную ссылку на телефоне или компьютере, чтобы продолжить ту же попытку.</p>
+        <div class="gate-message" id="gate-message"></div>
+      </div>
+    </div>
+
+    <main id="app" hidden>
+      <section class="intro" aria-labelledby="page-title">
+        <div>
+          <h1 id="page-title">Входная диагностика</h1>
+          <p>Отвечайте в своем темпе. Можно остановиться и вернуться позже.</p>
+        </div>
+        <div class="intro-meta"><strong id="progress-count">0 из 12</strong><span>заданий завершено</span></div>
+      </section>
+
+      <div class="progress-track" role="progressbar" aria-label="Прогресс теста" aria-valuemin="0" aria-valuemax="12" aria-valuenow="0" id="progress"><div id="progress-fill"></div></div>
+
+      <div class="layout">
+        <aside class="sidebar" aria-label="Разделы и результаты">
+          <div class="sidebar-head">
+            <h2>Задания</h2>
+            <span id="remaining">12 осталось</span>
+          </div>
+          <div class="score-panel">
+            <h2>Промежуточный результат</h2>
+            <p class="score-number"><span id="score-value">0</span><span class="score-denom"> / <span id="score-answered">0</span></span></p>
+            <p class="score-caption">верных ответов среди проверенных автоматически</p>
+            <p class="manual-note" id="manual-note">Практические ответы проверит наставник.</p>
+          </div>
+          <nav id="question-nav" aria-label="Переход между заданиями"></nav>
+        </aside>
+
+        <section class="question-panel" id="question-panel" aria-labelledby="question-title">
+          <div class="question-topline"><span id="question-topic"></span><span id="question-position"></span></div>
+          <h2 id="question-title"></h2>
+          <p class="question-description" id="question-description"></p>
+          <pre id="question-code" class="code-block" hidden><code></code></pre>
+          <div id="answer-area"></div>
+          <p id="feedback" class="feedback" role="status" aria-live="polite" hidden></p>
+          <div class="question-actions">
+            <button type="button" class="button button-secondary" id="prev-button">Назад</button>
+            <div class="action-right">
+              <button type="button" class="button button-secondary" id="next-button">Пропустить</button>
+              <button type="button" class="button button-primary" id="submit-button">Ответить</button>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <section class="finish" id="finish" hidden>
+        <h2>Диагностика завершена</h2>
+        <p id="finish-summary"></p>
+        <button type="button" class="button button-secondary" id="download-button">Скачать ответы</button>
+      </section>
+      <footer class="footer">В тесте нет таймера. Результат показывает текущий уровень и помогает выбрать следующие практические задания.</footer>
+    </main>
+  </div>
+  <script src="config.js"></script>
+  <script src="questions.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

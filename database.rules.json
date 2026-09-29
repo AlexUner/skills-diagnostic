@@ -1,0 +1,22 @@
+{
+  "rules": {
+    "attempts": {
+      "$token": {
+        ".read": "data.exists() && $token.matches(/^[a-f0-9]{48}$/)",
+        ".write": "data.exists() && newData.exists() && $token.matches(/^[a-f0-9]{48}$/)",
+        ".validate": "newData.hasChild('version')",
+        "version": { ".validate": "newData.val() === 1" },
+        "answers": {
+          "$id": {
+            ".validate": "newData.hasChildren(['value', 'submitted', 'updatedAt'])",
+            "value": { ".validate": "newData.isString() && newData.val().length <= 4000" },
+            "submitted": { ".validate": "newData.isBoolean()" },
+            "updatedAt": { ".validate": "newData.isNumber()" },
+            "$other": { ".validate": false }
+          }
+        },
+        "$other": { ".validate": false }
+      }
+    }
+  }
+}
