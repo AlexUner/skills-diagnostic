@@ -5,7 +5,7 @@
   const databaseURL = (window.APP_CONFIG?.databaseURL || '').replace(/\/$/, '');
   const token = (location.hash.match(/^#attempt=([a-f0-9]{48})$/) || [])[1];
   const preview = new URLSearchParams(location.search).has('preview');
-  const storageKey = `zina-diagnostic:v1:${token || 'preview'}`;
+  const storageKey = `skills-diagnostic:v1:${token || 'preview'}`;
   const pendingKey = `${storageKey}:pending`;
   const positionKey = `${storageKey}:position`;
   const $ = (id) => document.getElementById(id);
